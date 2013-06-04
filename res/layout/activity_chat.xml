@@ -2,13 +2,16 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="10dp"
     tools:context=".ChatActivity" >
     
-    <ScrollView 
+    <!-- scroll view to hold chat messages -->
+    <ScrollView
+        android:id="@+id/activity_chat_scroll_view" 
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentTop="true" >
+        android:layout_above="@+id/activity_chat_input"
+        android:layout_alignParentTop="true"
+        android:padding="10dp" >
         
         <LinearLayout 
             android:id="@+id/activity_chat_message_layout"
@@ -36,6 +39,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentRight="true"
+        android:padding="4dp"
         android:src="@drawable/ic_send"
         android:background="@drawable/button_background" 
         android:contentDescription="@string/send_message" />

@@ -1,3 +1,4 @@
 <resources>
     <color name="button_pressed">#87C8E6</color>
+    <color name="username">#FF0000</color>
 </resources>

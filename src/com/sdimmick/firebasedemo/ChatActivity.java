@@ -11,21 +11,28 @@ import com.firebase.client.FirebaseException;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextPaint;
+import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 public class ChatActivity extends SherlockActivity implements ChildEventListener {
-    private static final String FIREBASE_URL = "https://android-sdk-demo.firebaseio.com/";
+    private static final String FIREBASE_URL = "https://android-sdk-demo.firebaseio.com/chat";
     private static final String TAG = ChatActivity.class.getSimpleName();
     private static final String USERNAME_KEY = "username";
-    private static final String NAME = "name";
+    private static final String NAME = "username";
     private static final String MESSAGE = "message";
     
     private String mUsername;
@@ -33,9 +40,8 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
     private ViewGroup mChatMessagesLayout;
     private EditText mChatMessageView;
     private ImageButton mSendButton;
-    
-    private String mMessageUsername;
-    private String mMessageContents;
+    private ScrollView mScrollView;
+    private LayoutInflater mLayoutInflater;
     
     public static Intent createIntent(Context context, String username) {
         Intent intent = new Intent(context, ChatActivity.class);
@@ -56,6 +62,8 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
         mChatMessagesLayout = (ViewGroup) findViewById(R.id.activity_chat_message_layout);
         mChatMessageView = (EditText) findViewById(R.id.activity_chat_input);
         mSendButton = (ImageButton) findViewById(R.id.activity_chat_send);
+        mScrollView = (ScrollView) findViewById(R.id.activity_chat_scroll_view);
+        mLayoutInflater = LayoutInflater.from(this);
 
         mSendButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -79,18 +87,21 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
     private void sendMessage() {
         String message = mChatMessageView.getText().toString().trim();
         
-        Map<String, Object> firebaseMessage = new HashMap<String, Object>();
-        firebaseMessage.put(NAME, mUsername);
-        firebaseMessage.put(MESSAGE, message);
-        
-        try {
-            mFirebase.updateChildren(firebaseMessage);
-        } catch (FirebaseException e) {
-            Log.e(TAG, "Error sending message", e);
-            Toast.makeText(this, "Error sending message", Toast.LENGTH_SHORT).show();
+        if (message.length() > 0) {
+            Map<String, Object> firebaseMessage = new HashMap<String, Object>();
+            firebaseMessage.put(NAME, mUsername);
+            firebaseMessage.put(MESSAGE, message);
+            
+            try {
+                Firebase firebase = mFirebase.autoIdChild();
+                firebase.setValue(firebaseMessage);
+            } catch (FirebaseException e) {
+                Log.e(TAG, "Error sending message", e);
+                Toast.makeText(this, "Error sending message", Toast.LENGTH_SHORT).show();
+            }
+            
+            mChatMessageView.setText("");
         }
-        
-        mChatMessageView.setText("");
     }
 
     /* ChildEventListener callbacks */
@@ -100,39 +111,52 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
         
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void onChildAdded(DataSnapshot snapshot, String previousChildName) {
-        if (snapshot.getName().equals(NAME)) {
-            mMessageUsername = snapshot.getValue().toString();
-        } else if (snapshot.getName().equals(MESSAGE)) {
-            mMessageContents = snapshot.getValue().toString();
-        }
+        Log.d(TAG, "onChildAdded()");
         
-        if (mMessageUsername != null && mMessageContents != null) {
-            // We have a complete message. Display it.
-            LayoutInflater inflater = LayoutInflater.from(this);
-            TextView chatView = (TextView) inflater.inflate(R.layout.chat_message, null, false);
-            chatView.setText(getString(R.string.chat_message, mMessageUsername, mMessageContents));
-            mChatMessagesLayout.addView(chatView);
-            
-            mMessageUsername = null;
-            mMessageContents = null;
-        }
+        Map<String, Object> map = (Map<String, Object>) snapshot.getValue();
+        String username = map.get(NAME).toString();
+        String message = map.get(MESSAGE).toString();
+        
+        SpannableString span = new SpannableString(username);
+        span.setSpan(new ForegroundColorSpan(Color.BLACK) {
+            @Override
+            public void updateDrawState(TextPaint ds) {
+                ds.setColor(getResources().getColor(R.color.username));
+            }
+        }, 0, span.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        
+        TextView chatView = (TextView) mLayoutInflater.inflate(R.layout.chat_message, null);
+        chatView.setText(TextUtils.concat(span, " says ", message));
+        
+        mChatMessagesLayout.addView(chatView);
+        scrollToBottom();
+    }
+    
+    private void scrollToBottom() {
+        mScrollView.post(new Runnable() {
+            @Override
+            public void run() {
+                mScrollView.fullScroll(View.FOCUS_DOWN);
+            }
+        });
     }
 
     @Override
     public void onChildChanged(DataSnapshot snapshot, String previousChildName) {
-        
+        Log.d(TAG, "onChildChanged()");
     }
 
     @Override
     public void onChildMoved(DataSnapshot snapshot, String previousChildName) {
-        
+        Log.d(TAG, "onChildMoved()");
     }
 
     @Override
     public void onChildRemoved(DataSnapshot snapshot) {
-        
+        Log.d(TAG, "onChildRemoved()");
     }
 
 }
