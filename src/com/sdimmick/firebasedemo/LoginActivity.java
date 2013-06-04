@@ -3,11 +3,18 @@ package com.sdimmick.firebasedemo;
 import com.actionbarsherlock.app.SherlockActivity;
 
 import android.os.Bundle;
+import android.app.Activity;
 import android.content.Intent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+/**
+ * Simple {@link Activity} with an {@link EditText} for allowing the user to
+ * specify a username
+ *  
+ * @author sdimmick
+ */
 public class LoginActivity extends SherlockActivity {
     private EditText mUsernameView;
     private Button mContinueButton;

@@ -9,9 +9,9 @@ import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
 import com.firebase.client.FirebaseException;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -28,21 +28,48 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+/**
+ * Posts and displays chat messages for all devices pointing to FIREBASE_URL
+ * @author sdimmick
+ */
 public class ChatActivity extends SherlockActivity implements ChildEventListener {
-    private static final String FIREBASE_URL = "https://android-sdk-demo.firebaseio.com/chat";
+    // Tag for the Android logger
     private static final String TAG = ChatActivity.class.getSimpleName();
+    
+    // The root Firebase URL for this demo app
+    private static final String FIREBASE_URL = "https://android-sdk-demo.firebaseio.com/chat";
+    
+    // Key for the "logged in" user's name
     private static final String USERNAME_KEY = "username";
+    
+    // Username key for the chat payload
     private static final String NAME = "username";
+    
+    // Chat message key for the chat payload
     private static final String MESSAGE = "message";
     
+    // The "logged in" user's name
     private String mUsername;
+    
+    // The Firebase instance, pointing to FIREBASE_URL
     private Firebase mFirebase;
+    
+    // Layout inflater instance for inflating chat message views
+    private LayoutInflater mLayoutInflater;
+    
+    // References to views defined in activity_chat.xml
     private ViewGroup mChatMessagesLayout;
     private EditText mChatMessageView;
     private ImageButton mSendButton;
     private ScrollView mScrollView;
-    private LayoutInflater mLayoutInflater;
     
+    /**
+     * Creates an {@link Intent} to launch this {@link Activity}
+     * 
+     * @param context the caller's {@link Context}
+     * @param username the "logged in" user's name
+     * @return an {@link Intent} to launch this activity so we can begin chatting
+     */
     public static Intent createIntent(Context context, String username) {
         Intent intent = new Intent(context, ChatActivity.class);
         intent.putExtra(USERNAME_KEY, username);
@@ -52,19 +79,29 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Load the layout
         setContentView(R.layout.activity_chat);
+        
+        // Set the actionbar title
         setTitle(R.string.chat);
         
+        // Initialize our Firebase instance
         initializeFirebase();
         
+        // Grab the username that was passed in via the intent
         mUsername = getIntent().getStringExtra(USERNAME_KEY);
         
+        // Save references to various views we'll be working with
         mChatMessagesLayout = (ViewGroup) findViewById(R.id.activity_chat_message_layout);
         mChatMessageView = (EditText) findViewById(R.id.activity_chat_input);
         mSendButton = (ImageButton) findViewById(R.id.activity_chat_send);
         mScrollView = (ScrollView) findViewById(R.id.activity_chat_scroll_view);
+        
+        // Grab a LayoutInflater instance so we can inflate chat message views as they arrive
         mLayoutInflater = LayoutInflater.from(this);
 
+        // Send the chat message whenever the 'send' button is clicked
         mSendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -73,8 +110,10 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
         });
     }
     
+    /**
+     * Initiazes the Firebase client
+     */
     private void initializeFirebase() {
-        // Initialize the Firebase client
         try {
             mFirebase = new Firebase(FIREBASE_URL);
             mFirebase.addChildEventListener(this);
@@ -84,6 +123,9 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
         }
     }
     
+    /**
+     * Creates a new chat message object in our Firebase
+     */
     private void sendMessage() {
         String message = mChatMessageView.getText().toString().trim();
         
@@ -100,41 +142,14 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
                 Toast.makeText(this, "Error sending message", Toast.LENGTH_SHORT).show();
             }
             
+            // Clear the chat message edit text
             mChatMessageView.setText("");
         }
     }
-
-    /* ChildEventListener callbacks */
     
-    @Override
-    public void onCancelled() {
-        
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public void onChildAdded(DataSnapshot snapshot, String previousChildName) {
-        Log.d(TAG, "onChildAdded()");
-        
-        Map<String, Object> map = (Map<String, Object>) snapshot.getValue();
-        String username = map.get(NAME).toString();
-        String message = map.get(MESSAGE).toString();
-        
-        SpannableString span = new SpannableString(username);
-        span.setSpan(new ForegroundColorSpan(Color.BLACK) {
-            @Override
-            public void updateDrawState(TextPaint ds) {
-                ds.setColor(getResources().getColor(R.color.username));
-            }
-        }, 0, span.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        
-        TextView chatView = (TextView) mLayoutInflater.inflate(R.layout.chat_message, null);
-        chatView.setText(TextUtils.concat(span, " says ", message));
-        
-        mChatMessagesLayout.addView(chatView);
-        scrollToBottom();
-    }
-    
+    /**
+     * Scrolls the chat message list view to the bottom
+     */
     private void scrollToBottom() {
         mScrollView.post(new Runnable() {
             @Override
@@ -144,6 +159,45 @@ public class ChatActivity extends SherlockActivity implements ChildEventListener
         });
     }
 
+    /* ChildEventListener callbacks */
+    
+    @Override
+    public void onCancelled() {
+        Log.d(TAG, "onCancelled()");
+    }
+
+    /**
+     * Displays new chat messages as they are added as children to our Firebase
+     */
+    @SuppressWarnings("unchecked")
+    @Override
+    public void onChildAdded(DataSnapshot snapshot, String previousChildName) {
+        Log.d(TAG, "onChildAdded()");
+        
+        // Chat messages are serialized / deserialized String -> Object maps
+        Map<String, Object> map = (Map<String, Object>) snapshot.getValue();
+        String username = map.get(NAME).toString();
+        String message = map.get(MESSAGE).toString();
+        
+        // Show the usernames in a different color
+        SpannableString span = new SpannableString(username);
+        span.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.username)) {
+            @Override
+            public void updateDrawState(TextPaint ds) {
+                ds.setColor(getResources().getColor(R.color.username));
+            }
+        }, 0, span.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        
+        TextView chatView = (TextView) mLayoutInflater.inflate(R.layout.chat_message, null);
+        chatView.setText(TextUtils.concat(span, " says ", message));
+        
+        // Add the chat message view to the scroll view
+        mChatMessagesLayout.addView(chatView);
+        
+        // Scroll the scroll view to the bottom
+        scrollToBottom();
+    }
+    
     @Override
     public void onChildChanged(DataSnapshot snapshot, String previousChildName) {
         Log.d(TAG, "onChildChanged()");

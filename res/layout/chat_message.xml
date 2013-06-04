@@ -1,3 +1,5 @@
+<!-- TextView to hold chat messages to be added to the scroll view
+     in activity_chat.xml -->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
